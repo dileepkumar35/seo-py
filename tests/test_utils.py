@@ -1,6 +1,5 @@
 """Tests for utils module."""
 
-
 from utils import (
     escape_html,
     escape_json,

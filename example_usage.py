@@ -4,13 +4,12 @@ Example usage of the new modular components with the existing seo.py functionali
 This demonstrates how to integrate Pydantic config, Jinja2 templates, caching, and logging.
 """
 
-from datetime import datetime, timezone
 from pathlib import Path
 
 from config import SEOConfig, get_default_config
 from logger import get_logger
 from template_renderer import TemplateRenderer
-from utils import escape_html, get_country_flag, get_authority_name, truncate_text
+from utils import escape_html, get_authority_name, get_country_flag
 
 
 def example_basic_usage():
@@ -91,7 +90,7 @@ def example_custom_config():
 
     logger.info(f"Custom config site URL: {custom_config.site_url}")
     logger.info(f"Custom config twitter: {custom_config.twitter_handle}")
-    logger.info(f"Custom config validated successfully!")
+    logger.info("Custom config validated successfully!")
 
 
 def example_error_handling():
@@ -100,7 +99,7 @@ def example_error_handling():
 
     try:
         # Simulate an error
-        result = 1 / 0
+        _ = 1 / 0
     except ZeroDivisionError as e:
         logger.error("Division by zero error occurred", exc_info=e)
         logger.warning("Continuing with default values...")

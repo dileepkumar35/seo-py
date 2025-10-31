@@ -114,8 +114,8 @@ def test_html_structure_stability(renderer):
 
     # Check essential HTML structure
     assert "<!DOCTYPE html>" in html
-    assert "<html lang=\"en\">" in html
-    assert "<meta charset=\"utf-8\"" in html
+    assert '<html lang="en">' in html
+    assert '<meta charset="utf-8"' in html
     assert "<title>Test Page</title>" in html
     assert "GCC Tax Laws" in html  # Site name
     assert "<p>Test</p>" in html  # Content
