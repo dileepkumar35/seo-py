@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#232536" />
+    
+    <!-- SEO Meta Tags -->
+    <title>{{ meta_title }}</title>
+    
+    <meta name="description" content="{{ description }}" />
+    <meta name="keywords" content="{{ keywords }}" />
+    <link rel="canonical" href="{{ canonical }}" />
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="{{ site_url }}/sitemap.xml" />
+    
+    <!-- Document Type Specific CSS -->
+    {{ doc_type_css|safe }}
+    
+    <!-- Open Graph / Facebook -->
+    {{ og_tags|safe }}
+    
+    <!-- Twitter -->
+    {{ twitter_tags|safe }}
+    
+    {{ additional_meta|safe }}
+    
+    <!-- Additional SEO -->
+    <meta name="author" content="Team GTL" />
+    <meta name="geo.region" content="AE" />
+    <meta name="geo.placename" content="UAE" />
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {{ structured_data|tojson(indent=2) }}
+    </script>
+    
+    <!-- Critical CSS -->
+    <style>
+        {{ base_styles|safe }}
+        {{ doc_styles|safe }}
+        {{ nav_styles|safe }}
+        {{ additional_styles|safe }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <p><strong>{{ site_name }}</strong></p>
+            <nav>
+                <a href="/">Home</a>
+                <a href="{{ public_path }}/articles">Articles</a>
+                <a href="{{ public_path }}/decisions">Decisions</a>
+                <a href="{{ public_path }}/guidances">Guidance</a>
+                <a href="{{ public_path }}/tax-treaties">Treaties</a>
+                <a href="{{ public_path }}/blogs">Blogs</a>
+            </nav>
+        </div>
+    </div>
+
+    {{ breadcrumb_html|safe }}
+
+    <div class="main-content">
+        <div class="container">
+            {{ doc_meta|safe }}
+            
+            <div class="{{ 'blog-content' if document_type == 'blogs' else 'static-content' }}">
+                {{ content|safe }}
+            </div>
+
+            {{ internal_nav|safe }}
+            {{ related_content|safe }}
+
+            <div class="bot-notice">
+                🤖 This page is optimized for search engines and web crawlers. 
+                <a href="/">Visit our main site</a> for the full interactive experience.
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="container">
+            <p>&copy; {{ current_year }} {{ site_name }}. All rights reserved.</p>
+            <p>
+                <a href="/">Home</a> | 
+                <a href="{{ public_path }}/articles">Articles</a> | 
+                <a href="{{ public_path }}/decisions">Decisions</a> |
+                <a href="{{ public_path }}/guidances">Guidance</a> |
+                <a href="{{ public_path }}/tax-treaties">Treaties</a> |
+                <a href="{{ public_path }}/blogs">Blogs</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

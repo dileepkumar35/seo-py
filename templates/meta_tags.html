@@ -1,0 +1,22 @@
+{# Open Graph Meta Tags #}
+{% macro og_tags(title, description, canonical, og_image, og_image_alt, site_name) %}
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="{{ canonical }}" />
+    <meta property="og:title" content="{{ title }}" />
+    <meta property="og:description" content="{{ description }}" />
+    <meta property="og:image" content="{{ og_image }}" />
+    <meta property="og:image:alt" content="{{ og_image_alt }}" />
+    <meta property="og:site_name" content="{{ site_name }}" />
+    <meta property="fb:app_id" content="123456789012345" />
+{% endmacro %}
+
+{# Twitter Card Meta Tags #}
+{% macro twitter_tags(title, description, canonical, og_image, og_image_alt, twitter_handle) %}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="{{ canonical }}" />
+    <meta name="twitter:title" content="{{ title }}" />
+    <meta name="twitter:description" content="{{ description }}" />
+    <meta name="twitter:image" content="{{ og_image }}" />
+    <meta name="twitter:image:alt" content="{{ og_image_alt }}" />
+    <meta name="twitter:site" content="{{ twitter_handle }}" />
+{% endmacro %}
