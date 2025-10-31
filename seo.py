@@ -224,7 +224,7 @@ class CSSGenerator:
         .header p { margin: 0; font-size: 1.5rem; }
         .header nav a { color: #ccc; margin-right: 20px; text-decoration: none; }
         .header nav a:hover { color: white; }
-        .breadcrumb-nav { background: #e2eaf2;padding: 10px 0; border-bottom: 1px solid #e9ecef; }
+        .breadcrumb-nav { background: #e2eaf2; padding: 10px 0; border-bottom: 1px solid #e9ecef; }
         .breadcrumb-nav a { color: #007bff; text-decoration: none; }
         .breadcrumb-nav a:hover { text-decoration: underline; }
         .main-content { padding: 30px 0; }
@@ -327,7 +327,7 @@ class CSSGenerator:
             border-bottom: 1px solid #d0e1f0;
         }
         .related-content a:hover { text-decoration: underline; }
-        .treaty-benefits { margin-top: 30px; padding: 20px; background: #e2eaf2;border-radius: 8px; }
+        .treaty-benefits { margin-top: 30px; padding: 20px; background: #e2eaf2; border-radius: 8px; }
         .treaty-benefits h3 { color: #333; margin-bottom: 15px; }
         .treaty-benefits ul { padding-left: 20px; }
         .treaty-benefits li { margin-bottom: 8px; }"""
@@ -482,8 +482,11 @@ def generate_unified_html(
     doc_styles = css_gen.get_document_styles()
     nav_styles = css_gen.get_navigation_styles()
     
-    # Prepare title for meta tag
-    meta_title = escape_html(item.get('metaTitle', '') or title) if document_type != "blogs" else title
+    # Prepare title for meta tag (always escape for security)
+    if document_type == "blogs":
+        meta_title = escape_html(title)
+    else:
+        meta_title = escape_html(item.get('metaTitle', '') or title)
     
     return f"""<!DOCTYPE html>
 <html lang="en">
