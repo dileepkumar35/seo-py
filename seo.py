@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
 import re
 from html.parser import HTMLParser
+from dataclasses import dataclass
+from typing import Tuple
 
 # Configuration
 CONFIG = {
@@ -105,6 +107,398 @@ blog_files = [
 ]
 
 
+# ============================================================================
+# Basic Helper Functions (must be defined before classes that use them)
+# ============================================================================
+
+def escape_html(text: str) -> str:
+    """Escape HTML special characters"""
+    if not text:
+        return ""
+    return html.escape(str(text))
+
+
+def escape_json(text: str) -> str:
+    """Escape JSON special characters"""
+    if not text:
+        return ""
+    return str(text).replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
+
+
+# ============================================================================
+# Helper Classes for DRY Principle
+# ============================================================================
+
+@dataclass
+class MetaTags:
+    """Container for common meta tags to avoid duplication"""
+    title: str
+    description: str
+    keywords: str
+    canonical: str
+    og_image: str
+    og_image_alt: str
+    
+    def get_og_tags(self) -> str:
+        """Generate Open Graph meta tags"""
+        return f"""
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="{self.canonical}" />
+    <meta property="og:title" content="{escape_html(self.title)}" />
+    <meta property="og:description" content="{self.description}" />
+    <meta property="og:image" content="{self.og_image}" />
+    <meta property="og:image:alt" content="{self.og_image_alt}" />
+    <meta property="og:site_name" content="{CONFIG['SITE_NAME']}" />
+    <meta property="fb:app_id" content="123456789012345" />"""
+    
+    def get_twitter_tags(self) -> str:
+        """Generate Twitter Card meta tags"""
+        return f"""
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="{self.canonical}" />
+    <meta name="twitter:title" content="{escape_html(self.title)}" />
+    <meta name="twitter:description" content="{self.description}" />
+    <meta name="twitter:image" content="{self.og_image}" />
+    <meta name="twitter:image:alt" content="{self.og_image_alt}" />
+    <meta name="twitter:site" content="{CONFIG['TWITTER_HANDLE']}" />"""
+
+
+class StructuredDataBuilder:
+    """Builder for schema.org structured data to reduce duplication"""
+    
+    @staticmethod
+    def get_organization_schema(name: str = "GCC Tax Laws") -> Dict[str, Any]:
+        """Generate organization schema object"""
+        return {
+            "@type": "Organization",
+            "name": name,
+            "url": "https://gcctaxlaws.com",
+            "logo": {
+                "@type": "ImageObject",
+                "url": f"{CONFIG['SITE_URL']}/web-app-manifest-512x512.png",
+                "width": 180,
+                "height": 60,
+            },
+            "alternateName": "GTL",
+        }
+    
+    @staticmethod
+    def get_language_schema() -> Dict[str, Any]:
+        """Generate language schema object"""
+        return {
+            "@type": "Language",
+            "name": "English",
+            "alternateName": "en",
+        }
+    
+    @staticmethod
+    def get_webpage_schema(canonical: str) -> Dict[str, Any]:
+        """Generate webpage schema object"""
+        return {"@type": "WebPage", "@id": canonical}
+    
+    @staticmethod
+    def get_country_schema(country_name: str) -> Dict[str, Any]:
+        """Generate country schema object"""
+        return {
+            "@type": "Country",
+            "name": escape_json(country_name),
+        }
+
+
+class CSSGenerator:
+    """Generate common CSS to avoid duplication"""
+    
+    @staticmethod
+    def get_base_styles() -> str:
+        """Generate base CSS styles used across all document types"""
+        return """
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            margin: 0; 
+            line-height: 1.6; 
+            background: #f8f9fa;
+            color: #333;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .header { background: #232536; color: white; padding: 20px 0; }
+        .header p { margin: 0; font-size: 1.5rem; }
+        .header nav a { color: #ccc; margin-right: 20px; text-decoration: none; }
+        .header nav a:hover { color: white; }
+        .breadcrumb-nav { background: #e2eaf2;padding: 10px 0; border-bottom: 1px solid #e9ecef; }
+        .breadcrumb-nav a { color: #007bff; text-decoration: none; }
+        .breadcrumb-nav a:hover { text-decoration: underline; }
+        .main-content { padding: 30px 0; }
+        .document-meta { 
+            background: #e8f4fd; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            border-left: 4px solid #007bff;
+        }
+        .bot-notice {
+            background: #e3f2fd;
+            border: 1px solid #1976d2;
+            padding: 12px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #1565c0;
+            text-align: center;
+        }
+        .footer { background: #232536; color: white; padding: 20px 0; text-align: center; }
+        .footer a { color: #ccc; }"""
+    
+    @staticmethod
+    def get_document_styles() -> str:
+        """Generate document-specific styles"""
+        return """
+        .static-content { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .document-actions { 
+            margin-top: 30px; 
+            padding-top: 20px; 
+            border-top: 1px solid #eee; 
+            text-align: center;
+        }
+        .action-btn {
+            margin: 0 10px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary { background: #4071a3; color: white; }
+        .btn-success { background: #28a745; color: white; }"""
+    
+    @staticmethod
+    def get_navigation_styles() -> str:
+        """Generate navigation styles"""
+        return """
+        .internal-navigation { 
+            display: flex; 
+            justify-content: space-between; 
+            margin: 30px 0; 
+            padding: 20px; 
+            background: #e2eaf2;
+            border-radius: 8px; 
+        }
+        .internal-navigation a { 
+            padding: 10px 20px; 
+            background: #e2eaf2;
+            text-decoration: none; 
+            border-radius: 4px; 
+            transition: background 0.3s; 
+        }
+        .internal-navigation a:hover { background: #c8d7e6; }
+        .nav-link {
+            color: #007bff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+        .prev-link {
+            /* Inherits from .nav-link */
+        }
+        .next-link {
+            text-align: right;
+        }
+        .related-content { 
+            margin: 30px 0; 
+            padding: 20px; 
+            background: #e2eaf2;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .related-content h3 { color: #333; margin-bottom: 15px; }
+        .related-content ul { list-style: none; padding: 0; }
+        .related-content li { margin-bottom: 10px; }
+        .related-content a { 
+            color: #007bff; 
+            text-decoration: none;
+            display: block;
+            padding: 8px 0;
+            border-bottom: 1px solid #d0e1f0;
+        }
+        .related-content a:hover { text-decoration: underline; }
+        .treaty-benefits { margin-top: 30px; padding: 20px; background: #e2eaf2;border-radius: 8px; }
+        .treaty-benefits h3 { color: #333; margin-bottom: 15px; }
+        .treaty-benefits ul { padding-left: 20px; }
+        .treaty-benefits li { margin-bottom: 8px; }"""
+
+
+def get_document_css_link(document_type: str) -> str:
+    """Get document-type specific CSS link"""
+    css_map = {
+        "articles": "article.css",
+        "decisions": "decision.css",
+        "guidances": "guide.css",
+        "tax-treaties": "dtaa.css",
+        "blogs": "blogs.css",
+    }
+    css_file = css_map.get(document_type, "article.css")
+    return f"<link rel='stylesheet' href='https://gtlcdn-eufeh8ffbvbvacgf.z03.azurefd.net/guide/stylesheets/prod/{css_file}'>"
+
+
+def generate_unified_html(
+    title: str,
+    description: str,
+    canonical: str,
+    doc_meta: str,
+    breadcrumb_html: str,
+    content: str,
+    structured_data: Dict[str, Any],
+    document_type: str,
+    item: Dict[str, Any],
+    internal_nav: str = "",
+    related_content: str = "",
+    meta_keywords: str = "",
+    additional_meta: str = "",
+    additional_styles: str = "",
+) -> str:
+    """
+    Unified HTML generation function for all document types.
+    Replaces both generate_base_html and generate_blog_base_html.
+    """
+    # Use provided meta_keywords or generate as fallback
+    if document_type == "blogs":
+        keywords = meta_keywords or generate_blog_keywords(item)
+    else:
+        keywords = meta_keywords or generate_keywords(document_type, item)
+
+    # Handle OG image
+    if document_type == "blogs":
+        og_image = item.get("imageUrl", f"{CONFIG['SITE_URL']}{CONFIG['DEFAULT_OG_IMAGE']}")
+    else:
+        og_image = f"{CONFIG['SITE_URL']}{CONFIG['DEFAULT_OG_IMAGE']}"
+    
+    og_image_alt = f"{title} - {CONFIG['SITE_NAME']}"
+    
+    # Get document type CSS
+    doc_type_css = get_document_css_link(document_type)
+    
+    # Build meta tags
+    meta = MetaTags(
+        title=title,
+        description=description,
+        keywords=keywords,
+        canonical=canonical,
+        og_image=og_image,
+        og_image_alt=og_image_alt,
+    )
+    
+    # Generate CSS
+    css_gen = CSSGenerator()
+    base_styles = css_gen.get_base_styles()
+    doc_styles = css_gen.get_document_styles()
+    nav_styles = css_gen.get_navigation_styles()
+    
+    # Prepare title for meta tag
+    meta_title = escape_html(item.get('metaTitle', '') or title) if document_type != "blogs" else title
+    
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#232536" />
+    
+    <!-- SEO Meta Tags -->
+    <title>{meta_title}</title>
+    
+    <meta name="description" content="{description}" />
+    <meta name="keywords" content="{keywords}" />
+    <link rel="canonical" href="{canonical}" />
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="{CONFIG['SITE_URL']}/sitemap.xml" />
+    
+    <!-- Document Type Specific CSS -->
+    {doc_type_css}
+    
+    <!-- Open Graph / Facebook -->
+    {meta.get_og_tags()}
+    
+    <!-- Twitter -->
+    {meta.get_twitter_tags()}
+    
+    {additional_meta}
+    
+    <!-- Additional SEO -->
+    <meta name="author" content="Team GTL" />
+    <meta name="geo.region" content="AE" />
+    <meta name="geo.placename" content="UAE" />
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {json.dumps(structured_data, indent=2)}
+    </script>
+    
+    <!-- Critical CSS -->
+    <style>
+        {base_styles}
+        {doc_styles}
+        {nav_styles}
+        {additional_styles}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <p><strong>{CONFIG['SITE_NAME']}</strong></p>
+            <nav>
+                <a href="/">Home</a>
+                <a href="{CONFIG['PUBLIC_PATH']}/articles">Articles</a>
+                <a href="{CONFIG['PUBLIC_PATH']}/decisions">Decisions</a>
+                <a href="{CONFIG['PUBLIC_PATH']}/guidances">Guidance</a>
+                <a href="{CONFIG['PUBLIC_PATH']}/tax-treaties">Treaties</a>
+                <a href="{CONFIG['PUBLIC_PATH']}/blogs">Blogs</a>
+            </nav>
+        </div>
+    </div>
+
+    {breadcrumb_html}
+
+    <div class="main-content">
+        <div class="container">
+            {doc_meta}
+            
+            <div class="{"blog-content" if document_type == "blogs" else "static-content"}">
+                {content}
+            </div>
+
+            {internal_nav}
+            {related_content}
+
+            <div class="bot-notice">
+                🤖 This page is optimized for search engines and web crawlers. 
+                <a href="/">Visit our main site</a> for the full interactive experience.
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="container">
+            <p>&copy; {datetime.now(timezone.utc).year} {CONFIG['SITE_NAME']}. All rights reserved.</p>
+            <p>
+                <a href="/">Home</a> | 
+                <a href="{CONFIG['PUBLIC_PATH']}/articles">Articles</a> | 
+                <a href="{CONFIG['PUBLIC_PATH']}/decisions">Decisions</a> |
+                <a href="{CONFIG['PUBLIC_PATH']}/guidances">Guidance</a> |
+                <a href="{CONFIG['PUBLIC_PATH']}/tax-treaties">Treaties</a> |
+                <a href="{CONFIG['PUBLIC_PATH']}/blogs">Blogs</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+
 class BodyExtractor(HTMLParser):
     """Extract content between <body> tags"""
 
@@ -160,13 +554,6 @@ def extract_body_content(html_content: str) -> str:
 
 
 # Helper functions
-def escape_html(text: str) -> str:
-    """Escape HTML special characters"""
-    if not text:
-        return ""
-    return html.escape(str(text))
-
-
 def render_title(text: str) -> str:
     """Render title text that may contain intentional HTML tags (like span for styling).
     Does not escape if the text contains HTML tags, otherwise escapes for safety."""
@@ -177,13 +564,6 @@ def render_title(text: str) -> str:
         return str(text)
     # Otherwise, escape for safety
     return html.escape(str(text))
-
-
-def escape_json(text: str) -> str:
-    """Escape JSON special characters"""
-    if not text:
-        return ""
-    return str(text).replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
 
 
 def truncate_text(text: str, max_length: int) -> str:
@@ -771,58 +1151,28 @@ def generate_article_html(
         "dateModified": article.get(
             "modifiedDate", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         ),
-        "legislationJurisdiction": {
-            "@type": "Country",
-            "name": escape_json(country_info.get("countryName", "")),
-        },
-         "author": {
-        "@type": "Organization",
-        "name": "GCC Tax Laws",
-        "url": "https://gcctaxlaws.com",
-        "logo": {
-            "@type": "ImageObject",
-            "url": f"{CONFIG['SITE_URL']}/web-app-manifest-512x512.png",
-            "width": 180,
-            "height": 60,
-        },
-        "alternateName": "GTL",
-        },
-          "publisher": {
-        "@type": "Organization",
-        "name": CONFIG["SITE_NAME"],
-        "logo": {
-            "@type": "ImageObject",
-            "url": f"{CONFIG['SITE_URL']}/web-app-manifest-512x512.png",
-            "width": 180,
-            "height": 60,
-        },
-        "alternateName": "GTL",
-        },       
-        "mainEntityOfPage": {"@type": "WebPage", "@id": canonical},
-        "inLanguage": {
-        "@type": "Language",
-        "name": "English",
-        "alternateName": "en",
-        },
+        "legislationJurisdiction": StructuredDataBuilder.get_country_schema(country_info.get("countryName", "")),
+        "author": StructuredDataBuilder.get_organization_schema("GCC Tax Laws"),
+        "publisher": StructuredDataBuilder.get_organization_schema(CONFIG["SITE_NAME"]),
+        "mainEntityOfPage": StructuredDataBuilder.get_webpage_schema(canonical),
+        "inLanguage": StructuredDataBuilder.get_language_schema(),
         "about": {
             "@type": "Thing", 
             "name": "Tax Law",
             "description": f"{escape_json(country_info.get('countryName', ''))} tax legislation and regulations",
-        }, "mentions": [
-        {
-            "@type": "Organization",
-            "name": get_authority_name(
-                law_slug=law_info.get(
-                    "lawSlug",
-                    f"{country_info.get('countryName', '').lower()}-{law_info.get('lawShortName', '').lower()}",
-                )
-            ),
         },
-        {
-            "@type": "Country",
-            "name": escape_json(country_info.get("countryName", "")),
-        },
-    ],
+        "mentions": [
+            {
+                "@type": "Organization",
+                "name": get_authority_name(
+                    law_slug=law_info.get(
+                        "lawSlug",
+                        f"{country_info.get('countryName', '').lower()}-{law_info.get('lawShortName', '').lower()}",
+                    )
+                ),
+            },
+            StructuredDataBuilder.get_country_schema(country_info.get("countryName", "")),
+        ],
     "isPartOf": {
         "@type": "Legislation",
         "name": escape_json(law_info.get("lawFullName", "")),
@@ -956,36 +1306,11 @@ def generate_decision_html(
         "name": escape_json(country_info.get("countryName", "")),
     },
 
-    "author": {
-        "@type": "Organization",
-        "name": "GCC Tax Laws",
-        "url": "https://gcctaxlaws.com",
-        "logo": {
-            "@type": "ImageObject",
-            "url": f"{CONFIG['SITE_URL']}/web-app-manifest-512x512.png",
-            "width": 180,
-            "height": 60,
-        },
-        "alternateName": "GTL",
-    },
-    "publisher": {
-        "@type": "Organization",
-        "name": CONFIG["SITE_NAME"],
-        "logo": {
-            "@type": "ImageObject",
-            "url": f"{CONFIG['SITE_URL']}/web-app-manifest-512x512.png",
-            "width": 180,
-            "height": 60,
-        },
-        "alternateName": "GTL",
-    },
-    "mainEntityOfPage": {"@type": "WebPage", "@id": canonical},
+    "author": StructuredDataBuilder.get_organization_schema("GCC Tax Laws"),
+    "publisher": StructuredDataBuilder.get_organization_schema(CONFIG["SITE_NAME"]),
+    "mainEntityOfPage": StructuredDataBuilder.get_webpage_schema(canonical),
     "temporalCoverage": str(decision.get("year", "")),
-    "inLanguage": {
-        "@type": "Language",
-        "name": "English",
-        "alternateName": "en",
-    },
+    "inLanguage": StructuredDataBuilder.get_language_schema(),
     "about": {
         "@type": "Thing",
         "name": "Tax Decision",
@@ -1001,10 +1326,7 @@ def generate_decision_html(
                 )
             ),
         },
-        {
-            "@type": "Country",
-            "name": escape_json(country_info.get("countryName", "")),
-        },
+        StructuredDataBuilder.get_country_schema(country_info.get("countryName", "")),
     ],
     "isBasedOn": {
         "@type": "Legislation",
@@ -1618,7 +1940,38 @@ def generate_base_html(
     related_content: str = "",
     meta_keywords: str = "",
 ) -> str:
-    """Generate base HTML template"""
+    """Generate base HTML template - delegates to unified HTML generator"""
+    return generate_unified_html(
+        title=title,
+        description=description,
+        canonical=canonical,
+        doc_meta=doc_meta,
+        breadcrumb_html=breadcrumb_html,
+        content=content,
+        structured_data=structured_data,
+        document_type=document_type,
+        item=item,
+        internal_nav=internal_nav,
+        related_content=related_content,
+        meta_keywords=meta_keywords,
+    )
+
+
+def generate_base_html_OLD_VERSION_DO_NOT_USE(
+    title: str,
+    description: str,
+    canonical: str,
+    doc_meta: str,
+    breadcrumb_html: str,
+    content: str,
+    structured_data: Dict[str, Any],
+    document_type: str,
+    item: Dict[str, Any],
+    internal_nav: str = "",
+    related_content: str = "",
+    meta_keywords: str = "",
+) -> str:
+    """OLD VERSION - Generate base HTML template"""
 
     # Use provided meta_keywords or generate as fallback
     keywords = meta_keywords or generate_keywords(document_type, item)
@@ -2082,7 +2435,89 @@ def generate_blog_base_html(
     related_content: str = "",
     meta_keywords: str = "",
 ) -> str:
-    """Generate base HTML template for blog posts"""
+    """Generate base HTML template for blog posts - delegates to unified HTML generator"""
+    
+    # Blog-specific additional meta tags
+    additional_meta = f"""
+    <meta property="article:author" content="{escape_html(blog.get('author', 'Team GTL'))}" />
+    <meta property="article:published_time" content="{blog.get('publishedDate', '')}" />
+    <meta property="article:section" content="{escape_html(blog.get('category', 'Tax Insights'))}" />
+    
+    <!-- LinkedIn specific -->
+    <meta property="linkedin:owner" content="{CONFIG['TWITTER_HANDLE']}" />"""
+    
+    # Blog-specific CSS
+    additional_styles = """
+        .blog-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        .blog-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #232536;
+            margin-bottom: 0.5rem;
+            line-height: 1.2;
+        }
+        .blog-subtitle {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 1rem;
+            font-style: italic;
+        }
+        .blog-meta {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .blog-image {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            margin: 2rem auto;
+            display: block;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }"""
+    
+    return generate_unified_html(
+        title=title,
+        description=description,
+        canonical=canonical,
+        doc_meta=doc_meta,
+        breadcrumb_html=breadcrumb_html,
+        content=content,
+        structured_data=structured_data,
+        document_type="blogs",
+        item=blog,
+        internal_nav=internal_nav,
+        related_content=related_content,
+        meta_keywords=meta_keywords,
+        additional_meta=additional_meta,
+        additional_styles=additional_styles,
+    )
+
+
+def generate_blog_base_html_OLD_VERSION_DO_NOT_USE(
+    title: str,
+    description: str,
+    canonical: str,
+    doc_meta: str,
+    breadcrumb_html: str,
+    content: str,
+    structured_data: Dict[str, Any],
+    blog: Dict[str, Any],
+    formatted_date: str,
+    internal_nav: str = "",
+    related_content: str = "",
+    meta_keywords: str = "",
+) -> str:
+    """OLD VERSION - Generate base HTML template for blog posts"""
 
     # Use blog image or configured default
     og_image = blog.get("imageUrl", f"{CONFIG['SITE_URL']}{CONFIG['DEFAULT_OG_IMAGE']}")
