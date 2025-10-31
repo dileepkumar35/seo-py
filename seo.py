@@ -738,7 +738,7 @@ def get_country_flag(country_code: str) -> str:
 
 
 def generate_article_slug(
-    law_short_name: str, article_number: str, country_name: str = None
+    law_short_name: str, article_number: str, country_name: Optional[str] = None
 ) -> str:
     """Generate article slug based on country, law and article number
     Example: uae-cit-fdl-47-of-2022-article-1
@@ -754,8 +754,8 @@ def generate_decision_slug(
     law_short_name: str,
     decision_number: str,
     decision_year: str,
-    decision_type: str = None,
-    country_name: str = None,
+    decision_type: Optional[str] = None,
+    country_name: Optional[str] = None,
 ) -> str:
     """Generate decision slug based on country, law, type, number and year
     Example: uae-cit-fdl-47-of-2022-cd-35-of-2025
@@ -911,7 +911,7 @@ def get_authority_name(law_slug: str) -> str:
 
 
 def generate_internal_links(
-    current_item: Dict, all_items: List[Dict], doc_type: str
+    current_item: Dict[str, Any], all_items: List[Dict[str, Any]], doc_type: str
 ) -> str:
     """Generate prev/next navigation to reduce orphan pages"""
     # Only show navigation buttons for articles, not for decisions, guides, or tax-treaties
@@ -988,8 +988,8 @@ def parse_related_doc_url(url: str) -> Optional[Dict[str, str]]:
 
 
 def find_related_docs_from_json(
-    related_doc_urls: List[str], all_laws_data: List[Dict]
-) -> List[Dict]:
+    related_doc_urls: List[str], all_laws_data: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
     """Find related documents from JSON data based on relatedDocs URLs
 
     Args:
@@ -1109,7 +1109,7 @@ def find_related_docs_from_json(
 
 
 def generate_related_docs_html(
-    related_doc_urls: List[str], all_laws_data: List[Dict]
+    related_doc_urls: List[str], all_laws_data: List[Dict[str, Any]]
 ) -> str:
     """Generate HTML for related documents section based on relatedDocs field"""
     if not related_doc_urls:
@@ -1142,9 +1142,9 @@ def generate_article_html(
     article: Dict[str, Any],
     law_info: Dict[str, Any],
     country_info: Dict[str, Any],
-    all_articles: List[Dict[str, Any]] = None,
-    all_laws_data: List[Dict] = None,
-) -> tuple[str, str]:
+    all_articles: Optional[List[Dict[str, Any]]] = None,
+    all_laws_data: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[str, str]:
     """Generate HTML for article documents"""
     article_slug = generate_article_slug(
         law_info.get("lawShortName", ""),
@@ -1317,9 +1317,9 @@ def generate_decision_html(
     decision: Dict[str, Any],
     law_info: Dict[str, Any],
     country_info: Dict[str, Any],
-    all_decisions: List[Dict[str, Any]] = None,
-    all_laws_data: List[Dict] = None,
-) -> tuple[str, str]:
+    all_decisions: Optional[List[Dict[str, Any]]] = None,
+    all_laws_data: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[str, str]:
     """Generate HTML for decision documents"""
     decision_slug = generate_decision_slug(
         law_info.get("lawShortName", ""),
@@ -1466,10 +1466,10 @@ def generate_decision_html(
 
 def generate_guidance_html(
     guidance: Dict[str, Any],
-    law_info: Dict[str, Any] = None,
-    all_guidances: List[Dict[str, Any]] = None,
-    all_laws_data: List[Dict] = None,
-) -> tuple[str, str]:
+    law_info: Optional[Dict[str, Any]] = None,
+    all_guidances: Optional[List[Dict[str, Any]]] = None,
+    all_laws_data: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[str, str]:
     """Generate HTML for guidance documents"""
     # Get lawSlug from law_info or guidance data
     law_slug = guidance.get("lawSlug", "")
@@ -1612,9 +1612,9 @@ def generate_guidance_html(
 
 def generate_treaty_html(
     treaty: Dict[str, Any],
-    all_treaties: List[Dict[str, Any]] = None,
-    all_laws_data: List[Dict] = None,
-) -> tuple[str, str]:
+    all_treaties: Optional[List[Dict[str, Any]]] = None,
+    all_laws_data: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[str, str]:
     """Generate HTML for tax treaty documents"""
     treaty_slug = generate_treaty_slug(
         treaty.get("country1Slug", "uae"), treaty.get("country2Alpha3Code", "")
@@ -1787,8 +1787,8 @@ def generate_treaty_html(
 
 
 def generate_blog_html(
-    blog: Dict[str, Any], all_blogs: List[Dict[str, Any]] = None
-) -> tuple[str, str]:
+    blog: Dict[str, Any], all_blogs: Optional[List[Dict[str, Any]]] = None
+) -> Tuple[str, str]:
     """Generate HTML for blog posts"""
     blog_slug = generate_blog_slug(blog.get("title", ""))
     canonical = f"{CONFIG['SITE_URL']}/blogs/{blog_slug}"
