@@ -1469,56 +1469,22 @@ def generate_guidance_html(
     ),
 
     "legislationType": guidance.get("type", "Tax Guidance"),
-    "legislationJurisdiction": { 
-        "@type": "Country",
-        "name": country_name,
-    },
-
-    "provider": {
-        "@type": "Organization",
-        "name": "GCC Tax Laws",
-        "url": "https://gcctaxlaws.com",
-        "logo": {
-            "@type": "ImageObject",
-            "url": f"{CONFIG['SITE_URL']}/web-app-manifest-512x512.png",
-            "width": 180,
-            "height": 60,
-        },
-        "alternateName": "GTL",
-    },
-    "publisher": {
-        "@type": "Organization",
-        "name": CONFIG["SITE_NAME"],
-        "logo": {
-            "@type": "ImageObject",
-            "url": f"{CONFIG['SITE_URL']}/web-app-manifest-512x512.png",
-            "width": 180,
-            "height": 60,
-        },
-        "alternateName": "GTL",
-    },
-    "mainEntityOfPage": {"@type": "WebPage", "@id": canonical},
-
-    "inLanguage": { 
-        "@type": "Language",
-        "name": "English",
-        "alternateName": "en",
-    },
+    "legislationJurisdiction": StructuredDataBuilder.get_country_schema(country_name),
+    "provider": StructuredDataBuilder.get_organization_schema("GCC Tax Laws"),
+    "publisher": StructuredDataBuilder.get_organization_schema(CONFIG["SITE_NAME"]),
+    "mainEntityOfPage": StructuredDataBuilder.get_webpage_schema(canonical),
+    "inLanguage": StructuredDataBuilder.get_language_schema(),
     "about": {
         "@type": "Thing",
         "name": "Tax Guidance", 
         "description": f"{country_name} tax guidance and procedures",
     },
-
     "mentions": [
         {
             "@type": "Organization",
             "name": authority_name,
         },
-        {
-            "@type": "Country",
-            "name": country_name, 
-        },
+        StructuredDataBuilder.get_country_schema(country_name),
     ],
     }
     
@@ -1655,43 +1621,17 @@ def generate_treaty_html(
             },
         ],
         "temporalCoverage": str(treaty.get("year", datetime.now().year)),
-         "inLanguage": {
-        "@type": "Language",
-        "name": "English",
-        "alternateName": "en",
+        "inLanguage": StructuredDataBuilder.get_language_schema(),
+        "about": {
+            "@type": "Thing",
+            "name": "Double Taxation Avoidance", 
+            "description": "International tax treaty to prevent double taxation", 
         },
-         "about": {
-        "@type": "Thing",
-        "name": "Double Taxation Avoidance", 
-        "description": "International tax treaty to prevent double taxation", 
-     },
-        "publisher": {
-        "@type": "Organization",
-        "name": CONFIG["SITE_NAME"],
-        "url": CONFIG["SITE_URL"], 
-        "logo": {
-            "@type": "ImageObject",
-            "url": f"{CONFIG['SITE_URL']}{CONFIG['DEFAULT_OG_IMAGE']}",
-            "width": 180,
-            "height": 60,
-        },
-        "alternateName": CONFIG.get("SITE_SHORT_NAME", "GTL"),
-    },
-        "mainEntityOfPage": {"@type": "WebPage", "@id": canonical},
-        "mainEntityOfPage": {
-        "@type": "WebPage",
-        "@id": canonical,
-    },   
-
-    "mentions": [
-        {
-            "@type": "Country",
-            "name": country1Slug,
-        },
-        {
-            "@type": "Country",
-            "name": country2Name,
-        },
+        "publisher": StructuredDataBuilder.get_organization_schema(CONFIG["SITE_NAME"]),
+        "mainEntityOfPage": StructuredDataBuilder.get_webpage_schema(canonical),
+        "mentions": [
+            StructuredDataBuilder.get_country_schema(country1Slug),
+            StructuredDataBuilder.get_country_schema(country2Name),
         ],
          "keywords": treaty.get("metaKeywords") or f"{country1Slug}, {country2Name}, DTAA, tax treaty, double taxation",
         "identifier": {
@@ -1837,17 +1777,8 @@ def generate_blog_html(
             "name": escape_json(blog.get("author", "Team GTL")),
             # REMOVE url property
         },
-        "publisher": {
-            "@type": "Organization",
-            "name": CONFIG["SITE_NAME"],
-            "logo": {
-                "@type": "ImageObject",
-                "url": f"{CONFIG['SITE_URL']}/web-app-manifest-512x512.png",
-                "width": 180,
-                "height": 60,
-            },
-        },
-        "mainEntityOfPage": {"@type": "WebPage", "@id": canonical},
+        "publisher": StructuredDataBuilder.get_organization_schema(CONFIG["SITE_NAME"]),
+        "mainEntityOfPage": StructuredDataBuilder.get_webpage_schema(canonical),
         "about": {  # ADD THIS
             "@type": "Thing",
             "name": escape_json(blog.get("category", "Tax Insights")),
