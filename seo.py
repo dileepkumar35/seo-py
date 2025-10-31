@@ -346,6 +346,89 @@ def get_document_css_link(document_type: str) -> str:
     return f"<link rel='stylesheet' href='https://gtlcdn-eufeh8ffbvbvacgf.z03.azurefd.net/guide/stylesheets/prod/{css_file}'>"
 
 
+def generate_breadcrumb_html(breadcrumb_items: List[str]) -> str:
+    """
+    Generate breadcrumb navigation HTML from a list of items.
+    
+    Args:
+        breadcrumb_items: List of HTML strings for breadcrumb items
+        
+    Returns:
+        Complete breadcrumb navigation HTML
+    """
+    return f"""
+    <nav class="breadcrumb-nav" aria-label="Breadcrumb">
+        <div class="container">
+            {' &rsaquo; '.join(breadcrumb_items)}
+        </div>
+    </nav>"""
+
+
+def generate_document_meta_html(metadata_items: Dict[str, str]) -> str:
+    """
+    Generate document metadata HTML box.
+    
+    Args:
+        metadata_items: Dictionary of metadata key-value pairs
+        
+    Returns:
+        Complete document metadata HTML
+    """
+    meta_lines = []
+    for key, value in metadata_items.items():
+        if value:  # Only add non-empty values
+            meta_lines.append(f"<strong>{key}:</strong> {value}<br>")
+    
+    # Add last updated timestamp
+    meta_lines.append(f"<strong>Last updated at:</strong> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    
+    return f"""
+    <div class="document-meta">
+        {''.join(meta_lines)}
+    </div>"""
+
+
+def build_breadcrumbs(document_type: str, current_title: str, **kwargs) -> str:
+    """
+    Build breadcrumb navigation for different document types.
+    
+    Args:
+        document_type: Type of document (articles, decisions, guidances, tax-treaties, blogs)
+        current_title: Title of current page (will be shown as last breadcrumb)
+        **kwargs: Additional parameters based on document type
+        
+    Returns:
+        Complete breadcrumb HTML
+    """
+    breadcrumbs = ['<a href="/">Home</a>']
+    
+    # Add document type link
+    type_names = {
+        "articles": "Articles",
+        "decisions": "Decisions",
+        "guidances": "Guidance",
+        "tax-treaties": "Treaties",
+        "blogs": "Blogs",
+    }
+    type_name = type_names.get(document_type, document_type.capitalize())
+    breadcrumbs.append(f'<a href="{CONFIG["PUBLIC_PATH"]}/{document_type}">{type_name}</a>')
+    
+    # Add intermediate breadcrumbs based on document type
+    if document_type == "articles" and "law_info" in kwargs and "country_info" in kwargs:
+        law_info = kwargs["law_info"]
+        country_info = kwargs["country_info"]
+        breadcrumbs.append(
+            f'<a href="{CONFIG["PUBLIC_PATH"]}/laws/{country_info.get("countryName", "")}/{escape_html(law_info.get("lawShortName", ""))}">'
+            f'{escape_html(law_info.get("lawShortName", ""))}</a>'
+        )
+    
+    # Add current page as final breadcrumb (truncated if too long)
+    truncated_title = current_title[:60] if len(current_title) > 60 else current_title
+    breadcrumbs.append(f"<strong>{escape_html(truncated_title)}</strong>")
+    
+    return generate_breadcrumb_html(breadcrumbs)
+
+
 def generate_unified_html(
     title: str,
     description: str,
@@ -1888,418 +1971,6 @@ def generate_base_html(
     )
 
 
-def generate_base_html_OLD_VERSION_DO_NOT_USE(
-    title: str,
-    description: str,
-    canonical: str,
-    doc_meta: str,
-    breadcrumb_html: str,
-    content: str,
-    structured_data: Dict[str, Any],
-    document_type: str,
-    item: Dict[str, Any],
-    internal_nav: str = "",
-    related_content: str = "",
-    meta_keywords: str = "",
-) -> str:
-    """OLD VERSION - Generate base HTML template"""
-
-    # Use provided meta_keywords or generate as fallback
-    keywords = meta_keywords or generate_keywords(document_type, item)
-
-    # OG Image with alt text - use configured default image
-    # og_image = f"{CONFIG['SITE_URL']}/images/{document_type}/default-og.jpg"
-    og_image = f"{CONFIG['SITE_URL']}{CONFIG['DEFAULT_OG_IMAGE']}"
-    og_image_alt = f"{title} - {CONFIG['SITE_NAME']}"
-
-    # Add document-type specific CSS
-    doc_type_css = ""
-    if document_type == "articles":
-        doc_type_css = "<link rel='stylesheet' href='https://gtlcdn-eufeh8ffbvbvacgf.z03.azurefd.net/guide/stylesheets/prod/article.css'>"
-    elif document_type == "decisions":
-        doc_type_css = "<link rel='stylesheet' href='https://gtlcdn-eufeh8ffbvbvacgf.z03.azurefd.net/guide/stylesheets/prod/decision.css'>"
-    elif document_type == "guidances":
-        doc_type_css = "<link rel='stylesheet' href='https://gtlcdn-eufeh8ffbvbvacgf.z03.azurefd.net/guide/stylesheets/prod/guide.css'>"
-    elif document_type == "tax-treaties":
-        doc_type_css = "<link rel='stylesheet' href='https://gtlcdn-eufeh8ffbvbvacgf.z03.azurefd.net/guide/stylesheets/prod/dtaa.css'>"
-    elif document_type == "blogs":
-        doc_type_css = "<link rel='stylesheet' href='https://gtlcdn-eufeh8ffbvbvacgf.z03.azurefd.net/guide/stylesheets/prod/blogs.css'>"
-
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#232536" />
-    
-    <!-- SEO Meta Tags -->
-
-    <title>{escape_html(item.get('metaTitle', '') or title)}</title>
-    
-    <meta name="description" content="{description}" />
-    <meta name="keywords" content="{keywords}" />
-    <link rel="canonical" href="{canonical}" />
-    <link rel="sitemap" type="application/xml" title="Sitemap" href="{CONFIG['SITE_URL']}/sitemap.xml" />
-    
-    <!-- Document Type Specific CSS -->
-    {doc_type_css}
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="article" />
-    <meta property="og:url" content="{canonical}" />
-    <meta property="og:title" content="{title}" />
-    <meta property="og:description" content="{description}" />
-    <meta property="og:image" content="{og_image}" />
-    <meta property="og:image:alt" content="{og_image_alt}" />
-    <meta property="og:site_name" content="{CONFIG['SITE_NAME']}" />
-        <meta property="fb:app_id" content="123456789012345" />
-    <!-- random appid added so that User-agent: facebookexternalhit scrapes the thumbnail img value -->
-
-    
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="{canonical}" />
-    <meta name="twitter:title" content="{title}" />
-    <meta name="twitter:description" content="{description}" />
-    <meta name="twitter:image" content="{og_image}" />
-    <meta name="twitter:image:alt" content="{og_image_alt}" />
-    <meta name="twitter:site" content="{CONFIG['TWITTER_HANDLE']}" />
-    
-    <!-- Additional SEO -->
-    <meta name="author" content="Team GTL" />
-    <meta name="geo.region" content="AE" />
-    <meta name="geo.placename" content="UAE" />
-    
-    <!-- Structured Data -->
-    <script type="application/ld+json">
-    {json.dumps(structured_data, indent=2)}
-    </script>
-    
-    <!-- Critical CSS -->
-    <style>
-        body {{ 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            margin: 0; 
-            line-height: 1.6; 
-            background: #f8f9fa;
-            color: #333;
-        }}
-        .container {{ max-width: 1200px; margin: 0 auto; padding: 0 20px; }}
-        .header {{ background: #232536; color: white; padding: 20px 0; }}
-        .header p {{ margin: 0; font-size: 1.5rem; }}
-        .header nav a {{ color: #ccc; margin-right: 20px; text-decoration: none; }}
-        .header nav a:hover {{ color: white; }}
-        .breadcrumb-nav {{ background: #e2eaf2;padding: 10px 0; border-bottom: 1px solid #e9ecef; }}
-        .breadcrumb-nav a {{ color: #007bff; text-decoration: none; }}
-        .breadcrumb-nav a:hover {{ text-decoration: underline; }}
-        .main-content {{ padding: 30px 0; }}
-        .document-meta {{ 
-            background: #e8f4fd; 
-            padding: 15px; 
-            border-radius: 8px; 
-            margin-bottom: 20px; 
-            border-left: 4px solid #007bff;
-        }}
-        .static-content {{ 
-            max-width: 1200px; 
-            margin: 0 auto; 
-            background: white; 
-            padding: 2rem; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        .bot-notice {{
-            background: #e3f2fd;
-            border: 1px solid #1976d2;
-            padding: 12px;
-            margin: 20px 0;
-            border-radius: 4px;
-            color: #1565c0;
-            text-align: center;
-        }}
-        .footer {{ background: #232536; color: white; padding: 20px 0; text-align: center; }}
-        .footer a {{ color: #ccc; }}
-        .document-actions {{ 
-            margin-top: 30px; 
-            padding-top: 20px; 
-            border-top: 1px solid #eee; 
-            text-align: center;
-        }}
-        .action-btn {{
-            margin: 0 10px;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }}
-        .btn-primary {{ background: #4071a3; color: white; }}
-        .btn-success {{ background: #28a745; color: white; }}
-        .treaty-benefits {{ margin-top: 30px; padding: 20px; background: #e2eaf2;border-radius: 8px; }}
-        .treaty-benefits h3 {{ color: #333; margin-bottom: 15px; }}
-        .treaty-benefits ul {{ padding-left: 20px; }}
-        .treaty-benefits li {{ margin-bottom: 8px; }}
-        .internal-navigation {{ 
-            display: flex; 
-            justify-content: space-between; 
-            margin: 30px 0; 
-            padding: 20px; 
-            background: #e2eaf2;
-            border-radius: 8px; 
-        }}
-        .internal-navigation a {{ 
-            padding: 10px 20px; 
-            background: #e2eaf2;
-            text-decoration: none; 
-            border-radius: 4px; 
-            transition: background 0.3s; 
-        }}
-        .internal-navigation a:hover {{ background: #c8d7e6; }}
-        .nav-link {{
-            color: #007bff;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-        }}
-        .prev-link {{
-            /* Inherits from .nav-link */
-        }}
-        .next-link {{
-            text-align: right;
-        }}
-        .related-content {{ 
-            margin: 30px 0; 
-            padding: 20px; 
-            background: #e2eaf2;
-            border-radius: 8px;
-            border-left: 4px solid #007bff;
-        }}
-        .related-content h3 {{ color: #333; margin-bottom: 15px; }}
-        .related-content ul {{ list-style: none; padding: 0; }}
-        .related-content li {{ margin-bottom: 10px; }}
-        .related-content a {{ 
-            color: #007bff; 
-            text-decoration: none; 
-            transition: color 0.3s; 
-        }}
-        .related-content a:hover {{ color: #0056b3; text-decoration: underline; }}
-        .related-link {{
-            color: #007bff;
-            text-decoration: none;
-            display: block;
-            padding: 8px 0;
-        }}
-        .footer-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            margin-bottom: 20px;
-        }}
-        .footer-copyright {{
-            border-top: 1px solid #444;
-            padding-top: 20px;
-            text-align: center;
-        }}
-        .excerpt-box {{
-            background: #e2eaf2;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #007bff;
-        }}
-        .excerpt-text {{
-            margin-bottom: 0;
-            font-style: italic;
-            line-height: 1.6;
-        }}
-        .treaty-benefits {{
-            margin-top: 30px;
-            padding: 20px;
-            background: #e2eaf2;
-            border-radius: 8px;
-        }}
-        .index-container {{
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-        }}
-        .index-header {{
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 20px;
-            background: #e2eaf2;
-            border-radius: 8px;
-        }}
-        .index-header h1 {{
-            color: #232536;
-            margin-bottom: 10px;
-        }}
-        .index-header p {{
-            color: #666;
-        }}
-        .section-title {{
-            color: #232536;
-            border-bottom: 3px solid;
-            padding-bottom: 10px;
-            display: flex;
-            align-items: center;
-        }}
-        .section-count {{
-            font-size: 14px;
-            margin-left: 15px;
-            color: #666;
-            font-weight: normal;
-        }}
-        .section-box {{
-            background: #e2eaf2;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }}
-        .subsection-title {{
-            color: #232536;
-            border-left: 4px solid;
-            padding-left: 15px;
-            margin-bottom: 15px;
-        }}
-        .document-item {{
-            border-left: 4px solid #007bff;
-            padding: 15px;
-            background: white;
-            border-radius: 0 8px 8px 0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 15px;
-        }}
-        .document-item a {{
-            text-decoration: none;
-            color: #007bff;
-            font-size: 16px;
-        }}
-        .document-item a:hover {{
-            text-decoration: underline;
-        }}
-        .document-description {{
-            margin: 8px 0;
-            color: #666;
-            font-size: 14px;
-        }}
-        .document-preview {{
-            margin: 8px 0 0 0;
-            color: #555;
-            font-size: 13px;
-            line-height: 1.5;
-        }}
-        .law-section {{
-            margin-bottom: 30px;
-        }}
-        .law-section h3 {{
-            color: #232536;
-            margin-bottom: 15px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #007bff;
-            font-size: 14px;
-            line-height: 1.4;
-        }}           
-        .gtl-summary {{
-            color: #43af76;
-        }}  
-    </style>
-</head>
-<body>
-    <!-- This will be hydrated by React for human users -->
-    <div id="root">
-        <header class="header">
-            <div class="container">
-                <p>{CONFIG['SITE_NAME']}</p>
-                <nav>
-                    <a href="/">Home</a>
-                    <a href="{CONFIG['PUBLIC_PATH']}/articles">Articles</a>
-                    <a href="{CONFIG['PUBLIC_PATH']}/decisions">Decisions</a>
-                    <a href="{CONFIG['PUBLIC_PATH']}/guidances">Guidance</a>
-                    <a href="{CONFIG['PUBLIC_PATH']}/tax-treaties">Treaties</a>
-                    <a href="{CONFIG['PUBLIC_PATH']}/blogs">Blog</a>                    
-                </nav>
-            </div>
-        </header>
-        
-        {breadcrumb_html}
-        
-        <main class="main-content">
-            <div class="container">                     
-                <div class="static-content">
-                    {"" if item.get('slug') == 'index' else '''<section class="document-meta">                          
-                           <p class='gtl-summary'><b>GTL Summary: </b></p>                 
-                          <p id="summary">''' + escape_html(item.get('summary', '')) + '''</p>
-                    </section>'''}
-                    {doc_meta}
-                    
-                    <article>
-                    
-                        
-                        <section class="document-content">
-                            {content}
-                        </section>
-                        
-                        {internal_nav}
-                        {related_content}
-                    </article>
-                    
-                    <div class="document-actions">
-                        <button onclick="window.print()" class="action-btn btn-primary">
-                            🖨️ Print
-                        </button>
-                        <button onclick="navigator.share ? navigator.share({{title: document.title, url: window.location.href}}) : alert('URL: ' + window.location.href)"
-                                class="action-btn btn-success">
-                            📤 Share
-                        </button>
-                    </div>
-            <div class="bot-notice">
-                    <strong>Fast-loading version for search engines</strong> - 
-                    <a href="{canonical}" style="color: #1565c0;">Click here for the interactive version</a>
-                </div>
-                </div>
-            </div>
-        </main>
-        
-        <footer class="footer">
-            <div class="container">
-            
-                <div class="footer-grid">
-                    <div>
-                        <h3 style="margin-bottom: 10px;">About {CONFIG['SITE_NAME']}</h3>
-                        <p style="font-size: 14px; line-height: 1.6;">Searchable GCC tax database: UAE VAT & Corporate Tax (CIT) Saudi/KSA VAT customs duty excise transfer pricing and tax treaties (DTAA). Kuwait Oman Qatar Bahrain.</p>
-                    </div>
-                    <div>
-                        <h3 style="margin-bottom: 10px;">Get In Touch</h3>
-                        <p style="font-size: 14px; margin-bottom: 8px;">Have questions or suggestions?</p>
-                        <p style="font-size: 14px;"><strong>📧 Email:</strong> <a href="mailto:support@gcctaxlaws.com" style="color: #ccc;">support@gcctaxlaws.com</a></p>
-                    </div>
-                </div>
-                <div class="footer-copyright">
-                    <p>&copy; {datetime.now().year} {CONFIG['SITE_NAME']}. All rights reserved.</p>
-                    <p><a href="{CONFIG['SITE_URL']}">Visit our main website</a></p>
-                </div>
-            </div>
-        </footer>
-    </div>
-    
-    <!-- Data for React hydration -->
-    <script>
-        window.__STATIC_PAGE_DATA__ = {json.dumps({
-            'type': document_type,
-            'slug': item.get('slug', ''),
-            'url': f"/{document_type}/{item.get('slug', '')}",
-            'title': item.get('title', ''),
-            'id': item.get('_id', {}).get('$oid', '') if isinstance(item.get('_id'), dict) else item.get('_id', '')
-        })};
-    </script>
-</body>
-</html>"""
-
 
 def generate_keywords(document_type: str, item: Dict[str, Any]) -> str:
     """Generate SEO keywords based on document type and content"""
@@ -2432,391 +2103,6 @@ def generate_blog_base_html(
         additional_meta=additional_meta,
         additional_styles=additional_styles,
     )
-
-
-def generate_blog_base_html_OLD_VERSION_DO_NOT_USE(
-    title: str,
-    description: str,
-    canonical: str,
-    doc_meta: str,
-    breadcrumb_html: str,
-    content: str,
-    structured_data: Dict[str, Any],
-    blog: Dict[str, Any],
-    formatted_date: str,
-    internal_nav: str = "",
-    related_content: str = "",
-    meta_keywords: str = "",
-) -> str:
-    """OLD VERSION - Generate base HTML template for blog posts"""
-
-    # Use blog image or configured default
-    og_image = blog.get("imageUrl", f"{CONFIG['SITE_URL']}{CONFIG['DEFAULT_OG_IMAGE']}")
-    og_image_alt = f"{blog.get('title', '')} - {CONFIG['SITE_NAME']}"
-
-    # Use provided meta_keywords or generate as fallback
-    keywords = meta_keywords or generate_blog_keywords(blog)
-
-    # Extract excerpt or create from description
-    excerpt = blog.get("excerpt", description)
-    if len(excerpt) > 300:
-        excerpt = excerpt[:297] + "..."
-
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#232536" />
-    
-    <!-- SEO Meta Tags -->
-    <title>{title}</title>    
-    
-    <meta name="description" content="{description}" />
-    <meta name="keywords" content="{keywords}" />
-    <link rel="canonical" href="{canonical}" />
-    <link rel="sitemap" type="application/xml" title="Sitemap" href="{CONFIG['SITE_URL']}/sitemap.xml" />
-    
-    <!-- Blog Specific CSS -->
-    <link rel='stylesheet' href='https://gtlcdn-eufeh8ffbvbvacgf.z03.azurefd.net/guide/stylesheets/prod/blogs.css'>
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="article" />
-    <meta property="og:url" content="{canonical}" />
-    <meta property="og:title" content="{escape_html(blog.get('title', ''))}" />
-    <meta property="og:description" content="{description}" />
-    <meta property="og:image" content="{og_image}" />
-    <meta property="og:image:alt" content="{og_image_alt}" />
-    <meta property="fb:app_id" content="123456789012345" />
-    <!-- random appid added so that User-agent: facebookexternalhit scrapes the thumbnail img value -->
-
-    <meta property="og:site_name" content="{CONFIG['SITE_NAME']}" />
-    <meta property="article:author" content="{escape_html(blog.get('author', 'Team GTL'))}" />
-    <meta property="article:published_time" content="{blog.get('publishedDate', '')}" />
-    <meta property="article:section" content="{escape_html(blog.get('category', 'Tax Insights'))}" />
-    
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="{canonical}" />
-    <meta name="twitter:title" content="{escape_html(blog.get('title', ''))}" />
-    <meta name="twitter:description" content="{description}" />
-    <meta name="twitter:image" content="{og_image}" />
-    <meta name="twitter:image:alt" content="{og_image_alt}" />
-    <meta name="twitter:site" content="{CONFIG['TWITTER_HANDLE']}" />
-    
-    <!-- LinkedIn specific -->
-    <meta property="linkedin:owner" content="{CONFIG['TWITTER_HANDLE']}" />
-    
-    <!-- Additional SEO -->
-    <meta name="author" content="{escape_html(blog.get('author', 'Team GTL'))}" />
-    <meta name="geo.region" content="AE" />
-    <meta name="geo.placename" content="UAE" />
-    
-    <!-- Structured Data -->
-    <script type="application/ld+json">
-    {json.dumps(structured_data, indent=2)}
-    </script>
-    
-    <!-- Critical CSS for Blog -->
-    <style>
-        body {{ 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            margin: 0; 
-            line-height: 1.6; 
-            background: #f8f9fa;
-            color: #333;
-        }}
-        .container {{ max-width: 1200px; margin: 0 auto; padding: 0 20px; }}
-        .header {{ background: #232536; color: white; padding: 20px 0; }}
-        .header p {{ margin: 0; font-size: 1.5rem; }}
-        .header nav a {{ color: #ccc; margin-right: 20px; text-decoration: none; }}
-        .header nav a:hover {{ color: white; }}
-        .breadcrumb-nav {{ background: #e2eaf2;padding: 10px 0; border-bottom: 1px solid #e9ecef; }}
-        .breadcrumb-nav a {{ color: #007bff; text-decoration: none; }}
-        .breadcrumb-nav a:hover {{ text-decoration: underline; }}
-        .main-content {{ padding: 30px 0; }}
-        .document-meta {{ 
-            background: #e8f4fd; 
-            padding: 15px; 
-            border-radius: 8px; 
-            margin-bottom: 20px; 
-            border-left: 4px solid #007bff;
-        }}
-        .blog-content {{ 
-            max-width: 800px; 
-            margin: 0 auto; 
-            background: white; 
-            padding: 2rem; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        .blog-header {{
-            text-align: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #eee;
-        }}
-        .blog-title {{
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: #232536;
-            margin-bottom: 0.5rem;
-            line-height: 1.2;
-        }}
-        .blog-subtitle {{
-            font-size: 1.2rem;
-            color: #666;
-            margin-bottom: 1rem;
-            font-style: italic;
-        }}
-        .blog-meta {{
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-            color: #666;
-            font-size: 0.9rem;
-        }}
-        .blog-image {{
-            width: 100%;
-            max-width: 600px;
-            height: auto;
-            margin: 2rem auto;
-            display: block;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }}
-        .bot-notice {{
-            background: #e3f2fd;
-            border: 1px solid #1976d2;
-            padding: 12px;
-            margin: 20px 0;
-            border-radius: 4px;
-            color: #1565c0;
-            text-align: center;
-        }}
-        .footer {{ background: #232536; color: white; padding: 20px 0; text-align: center; }}
-        .footer a {{ color: #ccc; }}
-        .internal-navigation {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin: 30px 0;
-            padding: 20px 0;
-            border-top: 1px solid #e9ecef;
-            border-bottom: 1px solid #e9ecef;
-        }}
-        .internal-navigation a {{
-            color: #007bff;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            padding: 15px;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            transition: all 0.2s;
-            min-height: 80px;
-        }}
-        .internal-navigation a:hover {{ 
-            background: #e9ecef;
-            border-color: #007bff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }}
-        .nav-link-content {{
-            flex: 1;
-            min-width: 0;
-        }}
-        .nav-link-label {{
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }}
-        .nav-link-title {{
-            font-weight: 500;
-            color: #232536;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            line-height: 1.4;
-        }}
-        .prev-link {{
-            justify-content: flex-start;
-        }}
-        .next-link {{
-            justify-content: flex-end;
-            text-align: right;
-        }}
-        @media (max-width: 768px) {{
-            .internal-navigation {{
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }}
-        }}
-        .related-link {{
-            color: #007bff;
-            text-decoration: none;
-            display: block;
-            padding: 8px 0;
-        }}
-        .footer-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            margin-bottom: 20px;
-        }}
-        .footer-copyright {{
-            border-top: 1px solid #444;
-            padding-top: 20px;
-            text-align: center;
-        }}
-        .excerpt-box {{
-            background: #e2eaf2;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #007bff;
-        }}
-        .excerpt-text {{
-            margin-bottom: 0;
-            font-style: italic;
-            line-height: 1.6;
-        }}
-        .social-share {{ 
-            margin-top: 30px; 
-            padding-top: 20px; 
-            border-top: 1px solid #eee; 
-            text-align: center;
-        }}
-        .share-btn {{
-            margin: 0 5px;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 0.9rem;
-        }}
-        .btn-linkedin {{ background: #0077b5; color: white; }}
-        .btn-twitter {{ background: #1da1f2; color: white; }}
-        .btn-facebook {{ background: #4267B2; color: white; }}
-        .btn-print {{ background: #6c757d; color: white; }}
-    </style>
-</head>
-<body>
-    <div id="root">
-        <header class="header">
-            <div class="container">
-                <p>{CONFIG['SITE_NAME']}</p>
-                <nav>
-                <a href="/">Home</a>
-                    <a href="{CONFIG['PUBLIC_PATH']}/articles">Articles</a>
-                    <a href="{CONFIG['PUBLIC_PATH']}/decisions">Decisions</a>
-                    <a href="{CONFIG['PUBLIC_PATH']}/guidances">Guidance</a>
-                    <a href="{CONFIG['PUBLIC_PATH']}/tax-treaties">Treaties</a>
-                    <a href="{CONFIG['PUBLIC_PATH']}/blogs">Blog</a>
-                </nav>
-            </div>
-        </header>
-        
-        {breadcrumb_html}
-        
-        <main class="main-content">
-            <div class="container">               
-                
-                <article class="blog-content">
-                    <header class="blog-header">
-                        <h1 class="blog-title">{escape_html(blog.get('title', ''))}</h1>
-                        {f'<p class="blog-subtitle">{escape_html(blog.get("subtitle", ""))}</p>' if blog.get('subtitle') else ''}
-                        
-                        <div class="blog-meta">
-                        <span>📅 {formatted_date}</span>
-                            <span>👤 {escape_html(blog.get('author', 'Team GTL'))}</span>
-                            <span>📂 {escape_html(blog.get('category', 'Tax Insights'))}</span>
-                            {f'<span>⏱️ {estimate_reading_time(blog.get("content", ""))} min read</span>' if blog.get('content') else ''}
-                        </div>
-                    </header>                   
-                    
-    
-                    {doc_meta}
-                    
-                    {f'<img src="{blog["imageUrl"]}" alt="{escape_html(blog.get("title", ""))}" class="blog-image" />' if blog.get('imageUrl') else ''}
-                    
-                    <div class="excerpt-box">
-                        <h3 style="margin-top: 0; color: #232536;">Excerpt</h3>
-                        <p class="excerpt-text">{escape_html(excerpt)}</p>
-                    </div>
-                    
-                    <div class="blog-body">
-                        {content}
-                    </div>
-                    
-                    {internal_nav}
-                    {related_content}
-                    
-                    <div class="social-share">
-                        <h4>Share this article:</h4>
-                        <a href="https://www.linkedin.com/sharing/share-offsite/?url={canonical}" target="_blank" class="share-btn btn-linkedin">
-                            LinkedIn
-                        </a>
-                        <a href="https://twitter.com/intent/tweet?url={canonical}&text={escape_html(blog.get('title', ''))}" target="_blank" class="share-btn btn-twitter">
-                            Twitter
-                        </a>
-                        <a href="https://www.facebook.com/sharer/sharer.php?u={canonical}" target="_blank" class="share-btn btn-facebook">
-                            Facebook
-                        </a>
-                        <button onclick="window.print()" class="share-btn btn-print">
-                            Print
-                        </button>
-                    </div>
-            <div class="bot-notice">
-                    <strong>Fast-loading version for search engines</strong> - 
-                    <a href="{canonical}" style="color: #1565c0;">Click here for the interactive version</a>
-                </div>
-                </article>
-            </div>
-        </main>
-        
-        <footer class="footer">
-            <div class="container">
-            
-                <div class="footer-grid">
-                    <div>
-                        <h3 style="margin-bottom: 10px;">About {CONFIG['SITE_NAME']}</h3>
-                        <p style="font-size: 14px; line-height: 1.6;">Searchable GCC tax database: UAE VAT & Corporate Tax (CIT) Saudi/KSA VAT customs duty excise transfer pricing and tax treaties (DTAA). Kuwait Oman Qatar Bahrain.</p>
-                    </div>
-                    <div>
-                        <h3 style="margin-bottom: 10px;">Get In Touch</h3>
-                        <p style="font-size: 14px; margin-bottom: 8px;">Have questions or suggestions?</p>
-                        <p style="font-size: 14px;"><strong> Email:</strong> <a href="mailto:support@gcctaxlaws.com" style="color: #ccc;">support@gcctaxlaws.com</a></p>
-                    </div>
-                </div>
-                <div class="footer-copyright">
-                    <p>&copy; {datetime.now().year} {CONFIG['SITE_NAME']}. All rights reserved.</p>
-                    <p><a href="{CONFIG['SITE_URL']}">Visit our main website</a></p>
-                </div>
-            </div>
-        </footer>
-    </div>
-    
-    <!-- Data for React hydration -->
-    <script>
-        window.__STATIC_PAGE_DATA__ = {json.dumps({
-            'type': 'blogs',
-            'slug': generate_blog_slug(blog.get('title', '')),
-            'url': f"{CONFIG['PUBLIC_PATH']}/blogs/{generate_blog_slug(blog.get('title', ''))}",
-            'title': blog.get('title', ''),
-            'canonical': canonical
-        })};
-    </script>
-</body>
-</html>"""
 
 
 def process_laws_with_articles_and_decisions() -> Dict[str, Dict]:
